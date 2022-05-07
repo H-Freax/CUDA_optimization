@@ -1,7 +1,8 @@
 # CUDA优化入门实战
 
-注：本markdown代码部分格式高亮基于c++
 
+
+注：本markdown代码部分格式高亮基于c
 
 ## 新建一个CUDA项目（first_cuda.cu）
 
@@ -9,7 +10,7 @@
 
 要使用到runtime API的时候需要引用cuda_runtime.h
 
-```cmake
+```c
 #include <stdio.h>
 #include <cuda_runtime.h>
 ```
@@ -18,7 +19,7 @@
 
 判断CUDA是否可用
 
-```cmake
+```c
 int main(){
     if(!InitCUDA()){
         return 0;
@@ -32,7 +33,7 @@ int main(){
 
 判断CUDA是否可用
 
-```c++
+```c
 bool InitCUDA(){
     int count;
     
@@ -84,7 +85,7 @@ bool InitCUDA(){
 
 首先把开头部分改成
 
-```c++
+```c
 #include<stdio.h>
 #include<stdlib.h>
 #include<cuda_runtime.h>
@@ -96,7 +97,7 @@ int data[DATA_SIZE];
 
 编写生成随机数的函数
 
-```c++
+```c
 void GenerateNumbers(int *number, int size){
     for(int i = 0; i < size; i++){
         number[i] = rand() % 10;
@@ -106,7 +107,7 @@ void GenerateNumbers(int *number, int size){
 
 CUDA执行计算前需要把数据从主记忆体复制到显示记忆体中，才能让显示晶片使用，因此需要获取一块大小适当的显示记忆体来复制数据。在main函数中加入以下部分
 
-```c++
+```c
    GenerateNumbers(data,DATASIZE);
     int* gpudata, *result;
 
@@ -124,7 +125,7 @@ cudaMalloc和cudaMemcpy的用法和一般的malloc以及memcpy类似，不过cud
 
 接下来编写在显示晶片上的函数，在CUDA中，在函数前面加上\__global__表示这个函数是在显示晶片上执行的。
 
-```c++
+```c
 __global__ static void sumOfSquares(int *num, int* result)
 {
     int sum = 0;
@@ -141,13 +142,13 @@ __global__ static void sumOfSquares(int *num, int* result)
 
 接下来是让CUDA执行函数，在CUDA中执行函数需要使用以下的语法
 
-```c++
+```c
 函数名称<<<block 数目, thread 数目, shared memory 大小>>>(参数);
 ```
 
 执行完毕后需要将结果从显示晶片复制回主记忆体，在main函数中加入以下部分
 
-```c++
+```c
     sumOfSquares<<<1, 1, 0>>>(gpudata, result);
 
     int sum;
@@ -162,7 +163,7 @@ __global__ static void sumOfSquares(int *num, int* result)
 
 如果要验证结果是否正确，可以加入CPU的执行代码进行验证
 
-```c++
+```c
     sum = 0;
     for(int i = 0; i < DATA_SIZE; i++) {
         sum += data[i] * data[i];
@@ -172,7 +173,7 @@ __global__ static void sumOfSquares(int *num, int* result)
 
 CUDA提供了clock函数可以取得timestamp，适合用来判断程序执行的时间，单位为GPU执行单元的时间，可以在优化程序时间时提供参考，如果需要记录时间的话，需要更改sumOfSquares为以下内容
 
-```c++
+```c
 __global__ static void sumOfSquares(int *num, int* result, clock_t* time){
     int sum = 0;
     int i;
@@ -188,7 +189,7 @@ __global__ static void sumOfSquares(int *num, int* result, clock_t* time){
 
 main函数的部分修改如下：
 
-```c++
+```c
     int* gpudata, *result;
     clock_t* time;
     cudaMalloc((void**) &gpudata, sizeof(int) * DATA_SIZE);
@@ -229,14 +230,14 @@ main函数的部分修改如下：
 
 首先，基于first_cuda.cu，添加以下代码
 
-```c++
+```c
 #define DATA_SIZE    1048576
 #define THREAD_NUM   256
 ```
 
 修改sumOfSquares为以下内容，即__优化1.0__
 
-```c++
+```c
 __global__ static void sumOfSquares(int *num, int* result,
     clock_t* time)
 {
@@ -259,7 +260,7 @@ __global__ static void sumOfSquares(int *num, int* result,
 
 因为会有256个计算结果，所以result也需要扩大占用的位置。需要修改main函数为
 
-```c++
+```c
     int* gpudata, *result;
     clock_t* time;
     cudaMalloc((void**) &gpudata, sizeof(int) * DATA_SIZE);
@@ -283,7 +284,7 @@ __global__ static void sumOfSquares(int *num, int* result,
 
 最后，在CPU端计算和
 
-```c++
+```c
     int final_sum = 0;
     for(int i = 0; i < THREAD_NUM; i++) {
         final_sum += sum[i];
@@ -310,7 +311,7 @@ thread 0 -> thread 1 -> thread 2 -> ……
 
 因此，在同一个thread中连续存储记忆体，实际执行的时候并不连续，要让实际执行时连续，应该要让thread 0读取第一个数，thread 1读取第二个数，以此类推。因此需要修改sumOfSquares如下
 
-```c++
+```c
 __global__ static void sumOfSquares(int *num, int* result,
     clock_t* time)
 {
@@ -340,7 +341,7 @@ __global__ static void sumOfSquares(int *num, int* result,
 
 首先在#define的位置修改代码
 
-```c++
+```c
 #define DATA_SIZE   1048576
 #define BLOCK_NUM   32
 #define THREAD_NUM   256
@@ -350,7 +351,7 @@ __global__ static void sumOfSquares(int *num, int* result,
 
 接下来修改sumOfSquares部分
 
-```c++
+```c
 __global__ static void sumOfSquares(int *num, int* result,
     clock_t* time)
 {
@@ -373,7 +374,7 @@ __global__ static void sumOfSquares(int *num, int* result,
 
 最后修改main函数部分
 
-```c++
+```c
     int* gpudata, *result;
     clock_t* time;
     cudaMalloc((void**) &gpudata, sizeof(int) * DATA_SIZE);
@@ -420,7 +421,7 @@ __global__ static void sumOfSquares(int *num, int* result,
 
 这个版本中，我们让每个block都计算自己的threads的计算结果的和，把sumOfSquares修改如下
 
-```c++
+```c
 __global__ static void sumOfSquares(int *num, int* result,
     clock_t* time)
 {
@@ -453,7 +454,7 @@ __global__ static void sumOfSquares(int *num, int* result,
 
 接下来把main函数部分改成
 
-```c++
+```c
     int* gpudata, *result;
     clock_t* time;
     cudaMalloc((void**) &gpudata, sizeof(int) * DATA_SIZE);
@@ -493,7 +494,7 @@ __global__ static void sumOfSquares(int *num, int* result,
 
 把sumOfSquares修改如下
 
-```c++
+```c
 __global__ static void sumOfSquares(int *num, int* result,
     clock_t* time)
 {
@@ -536,7 +537,7 @@ __bank conflict是什么？：__
 
 可以进行如下改写
 
-```c++
+```c
     offset = THREAD_NUM / 2;
     while(offset > 0) {
         if(tid < offset) {
@@ -549,7 +550,7 @@ __bank conflict是什么？：__
 
 这时候省去了mask，也有进一步提升，当然，再优化的话，可以展开树状加法
 
-```c++
+```c
     if(tid < 128) { shared[tid] += shared[tid + 128]; }
     __syncthreads();
     if(tid < 64) { shared[tid] += shared[tid + 64]; }
@@ -571,4 +572,427 @@ __bank conflict是什么？：__
 
 
 ## 用CUDA做个简单的乘法(cuda_float.cu)
+
+### 先来试试基本的矩阵乘法（1.0）
+
+简单起见，我们这里先采用方形矩阵举例：
+
+假设有两个矩阵 A跟 B，计算 AB=C 可以用以下代码表示
+
+```c
+for(i = 0; i < n; i++) {
+	for(j = 0; j < n; j++) {
+			C[i][j] = 0;
+			for(k = 0; k < n; k++) {
+					C[i][j] += A[i][k] * B[k][j];
+      }
+  }
+}
+```
+
+然后我们完善一下 main 函数
+
+```c
+int main(){
+    float *a, *b, *c, *d;
+    int n = 1000;
+
+    if(!InitCUDA()) return 0;
+
+    a = (float*) malloc(sizeof(float) * n * n);
+    b = (float*) malloc(sizeof(float) * n * n);
+    c = (float*) malloc(sizeof(float) * n * n);
+    d = (float*) malloc(sizeof(float) * n * n);
+
+    srand(0);
+
+    matgen(a, n, n);
+    matgen(b, n, n);
+
+    clock_t time = matmultCUDA(a, n, b, n, c, n, n);
+
+    matmult(a, n, b, n, d, n, n);
+    compare_mat(c, n, d, n, n);
+
+    double sec = (double) time / CLOCKS_PER_SEC;
+    printf("Time used: %.2f (%.2lf GFLOPS)\n", sec,
+       2.0 * n * n * n / (sec * 1E9));
+
+    return 0;    
+}
+
+```
+
+接下来编写用于产生矩阵的matgen 函数
+
+```c
+void matgen(float* a, int lda, int n){
+    int i, j;
+
+    for(i = 0; i < n; i++) {
+        for(j = 0; j < n; j++) {
+            a[i * lda + j] = (float) rand() / RAND_MAX + 
+                (float) rand() / (RAND_MAX * RAND_MAX);
+        }
+    }
+}
+```
+
+先用将矩阵填满0~1之间的随机数，由于C语言中不能给出可以变动的二维矩阵，因此采用i * lda + j的方式来声明。
+
+接下来编写矩阵乘法的部分，即 matmult 函数
+
+```c
+void matmult(const float* a, int lda, const float* b, int ldb, 
+    float* c, int ldc, int n){
+    int i, j, k;
+
+    for(i = 0; i < n; i++) {
+        for(j = 0; j < n; j++) {
+            double t = 0;
+            for(k = 0; k < n; k++) {
+                t += a[i * lda + k] * b[k * ldb + j];
+            }
+            c[i * ldc + j] = t;
+        }
+    }
+}
+```
+
+这个部分采用 CPU 进行计算，用于比较答案是否正确，采用 double 格式进行结果的保存提高精度。
+
+接下来我们来编写用于验证结果是否正确的函数 compare_mat
+
+```c
+void compare_mat(const float* a, int lda, 
+    const float* b, int ldb, int n){
+    float max_err = 0;
+    float average_err = 0;
+    int i, j;
+    
+    for(i = 0; i < n; i++) {
+        for(j = 0; j < n; j++) {
+            if(b[i * ldb + j] != 0) {
+                float err = fabs((a[i * lda + j] -
+                    b[i * ldb + j]) / b[i * ldb + j]);
+                if(max_err < err) max_err = err;
+                average_err += err;
+            }
+        }
+    }
+
+    printf("Max error: %g Average error: %g\n",
+        max_err, average_err / (n * n));
+}
+```
+
+计算使用 CPU 计算的矩阵结果跟使用 GPU计算的矩阵结果之间的最大误差以及平均误差。
+
+最后编写使用 CUDA 计算矩阵的部分
+
+```c
+ #define NUM_THREADS 256
+
+clock_t matmultCUDA(const float* a, int lda,
+		const float* b, int ldb, float* c, int ldc, int n)
+		{
+				float *ac, *bc, *cc;
+        clock_t start, end;
+
+        start = clock();
+        cudaMalloc((void**) &ac, sizeof(float) * n * n);
+        cudaMalloc((void**) &bc, sizeof(float) * n * n);
+        cudaMalloc((void**) &cc, sizeof(float) * n * n);
+
+        cudaMemcpy2D(ac, sizeof(float) * n, a, sizeof(float) * lda,
+            sizeof(float) * n, n, cudaMemcpyHostToDevice);
+        cudaMemcpy2D(bc, sizeof(float) * n, b, sizeof(float) * ldb,
+            sizeof(float) * n, n, cudaMemcpyHostToDevice);
+
+        int blocks = (n + NUM_THREADS - 1) / NUM_THREADS;
+        matMultCUDA<<<blocks * n, NUM_THREADS>>>
+            (ac, n, bc, n, cc, n, n);
+
+        cudaMemcpy2D(c, sizeof(float) * ldc, cc, sizeof(float) * n,
+        sizeof(float) * n, n, cudaMemcpyDeviceToHost);
+
+        cudaFree(ac);
+        cudaFree(bc);
+        cudaFree(cc);
+
+        end = clock();
+
+        return end - start;
+}
+```
+
+在这个计算过程中，因为使用 cudaMemcpy 函数来进行复制的话，对于二维矩阵而言需要按行分开复制，降低效率，因此采用了 cudaMemcpy2D函数用来复制。
+
+该函数中进行计算的 kernel 如下
+
+```c
+__global__ static void matMultCUDA(const float* a, size_t lda,
+    const float* b, size_t ldb, float* c, size_t ldc, int n){
+    const int tid = threadIdx.x;
+    const int bid = blockIdx.x;
+    const int idx = bid * blockDim.x + tid;
+    const int row = idx / n;
+    const int column = idx % n;
+    int i;
+
+    if(row < n && column < n) {
+        float t = 0;
+        for(i = 0; i < n; i++) {
+            t += a[row * lda + i] * b[i * ldb + column];
+        }
+        c[row * ldc + column] = t;
+    }
+    
+}
+```
+
+一开始先从 bid 和 tid 计算出该thread 应该计算的行跟列，在判断行跟列在范围内以后就可以进行计算，然后写入 C 矩阵中。
+
+但是这样的计算方式执行效率较低，产生的误差也偏高。误差大的原因是我们在 CPU 上进行计算时采用的是 double 格式进行累计，在GPU 上采用的是 float 格式进行累计，累计大量数据以后误差也会变大。因此我们可以采用Kahan's Summation Formula来提高精度。
+
+即采用一个中间变量保存有可能被吞掉的部分。具体实现如下
+
+```c
+if(row < n && column < n) {
+        float t = 0;
+        float y = 0;
+        for(i = 0; i < n; i++) {
+            float r;
+            y -= a[row * lda + i] * b[i * ldb + column];
+            r = t - y;
+            y = (r - t) + y;
+            t = r;
+        }
+    }
+```
+
+ 修改后误差虽然减小了，但是会存在效率没有什么变化的问题。
+
+这是因为采用Kahan's Summation Formula需要计算的量会增大，主要的瓶颈应该是在存取上，大量的读取过程是重复的，例如矩阵的每行在每次计算时都需要被重复读入，需要读取2*n^3次，如果每个行只用读一次的话，会减少到 n^3+n^2次。
+
+### 来尝试一下第一次改良把！（改良2.0）
+
+我们可以采用 shared memory来存储每行的内容，因为同一个 block 的 threads才能共用 shared memory，因此一行只能由同一个 block 的 threads 来计算，另外也需要存下一整行的 shared memory，所以需要把 kernel 的部分修改如下
+
+```c
+matMultCUDA<<<n, NUM_THREADS, sizeof(float) * n>>>
+            (ac, n, bc, n, cc, n, n);
+```
+
+kernel 的部分修改如下
+
+```c
+    __global__ static void matMultCUDA(const float* a, size_t lda,
+        const float* b, size_t ldb, float* c, size_t ldc, int n)
+    {
+        extern __shared__ float data[];
+        const int tid = threadIdx.x;
+        const int row = blockIdx.x;
+        int i, j;
+
+        for(i = tid; i < n; i += blockDim.x) {
+            data[i] = a[row * lda + i];
+        }
+
+        __syncthreads();
+
+        for(j = tid; j < n; j += blockDim.x) {
+            float t = 0;
+            float y = 0;
+            for(i = 0; i < n; i++) {
+                float r;
+                y -= data[i] * b[i * ldb + j];
+                r = t - y;
+                y = (r - t) + y;
+                t = r;
+            }
+            c[row * ldc + j] = t;
+        }
+    }
+```
+
+虽然速度有一点提高，但是还有提升空间，比如说虽然 A 矩阵的行不用重复读取了，但是 B 矩阵的列还需要被重复读取。
+
+还有一个看起来不明显的问题，对 B 矩阵的读取虽然看起来不连续，但是实际上的连续的，因为不同的 thread 读取不同的列，因此某个时间里每个 thread读取的各个列加起来就是一个连续的记忆体区块。之所以效率没有那么好，是因为 GPU 上的记忆体控制器需要按某个固定的倍数地址开始读取才会效率最高，例如16bytes 的倍数，因此，矩阵的大小即行数列数并不是16的倍数，所以效率不佳。
+
+想解决这个问题的话，可以在 cudaMalloc 的地方稍微适当修改，让尺寸变成适当的倍数就可以。在 CUDA 中，可以采用cudaMallocPitch函数，可以自动匹配最佳的倍数，因此可以把 cudaMalloc 的部分改成
+
+```c
+		size_t pitch_a, pitch_b, pitch_c;
+    cudaMallocPitch((void**) &ac, &pitch_a, sizeof(float) * n, n);
+    cudaMallocPitch((void**) &bc, &pitch_b, sizeof(float) * n, n);
+    cudaMallocPitch((void**) &cc, &pitch_c, sizeof(float) * n, n);
+```
+
+同时需要在复制阶段把宽度换成对应的
+
+```c
+cudaMemcpy2D(ac, pitch_a, a, sizeof(float) * lda,
+        sizeof(float) * n, n, cudaMemcpyHostToDevice);
+    cudaMemcpy2D(bc, pitch_b, b, sizeof(float) * ldb,
+        sizeof(float) * n, n, cudaMemcpyHostToDevice);
+```
+
+kernel的部分也需要做对应的更改
+
+```c
+    matMultCUDA<<<n, NUM_THREADS, sizeof(float) * n>>>
+        (ac, pitch_a / sizeof(float), bc, pitch_b / sizeof(float),
+        cc, pitch_c / sizeof(float), n);
+```
+
+ 复制回主记忆体的部分也需要修改
+
+```c
+    cudaMemcpy2D(c, sizeof(float) * ldc, cc, pitch_c,
+        sizeof(float) * n, n, cudaMemcpyDeviceToHost);
+```
+
+经过这样优化以后，速度可以提升三倍多。
+
+虽然执行速度提高了很多，但是可以看出，这个改良受限于记忆体的频宽。
+
+### 可以试试不被记忆体的频宽限制进行改良吗？（改良3.0）
+
+上一节中提到过 B 矩阵的列也被重复使用，理论上应该也可以避免重复载入，但是因为 B 矩阵的列的使用时间跟 A 矩阵的行不一样，所以不能直接按照 A 矩阵的方法来做。
+
+解决的方法是采用 blocking，也就是把大矩阵拆成很多小矩阵来计算，例如如果我们需要计算 C 矩阵中[0,0]-[15,15]的值，可以看做
+
+A[0~15, 0~15] * B[0~15, 0~15] +A[0~15, 16~31] * B[16~31, 0~15] +...
+
+这样一来，我们只需要把小矩阵载入 shared memory，小矩阵的计算就不需要外部记忆体了，这样来说，假设小矩阵的记忆体大小是 k，实际上需要的记忆体存储次数就是
+$$
+2k^2(n/k)^3=2n^3/k
+$$
+为了方便block的计算，我们让每个 block 拥有16*16个 threads，再建立（n/16)*(n/16)个 blocks
+
+我们修改一下以下部分
+
+```c
+    int bx = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    dim3 blocks(bx, bx);
+    dim3 threads(BLOCK_SIZE, BLOCK_SIZE);
+    matMultCUDA<<<blocks, threads>>>(ac, pitch_a / sizeof(float),
+        bc, pitch_b / sizeof(float), cc, pitch_c / sizeof(float), n);
+```
+
+BLOCK_SIZE定义成16，dim3在 CUDA 中表示一个3D 的向量。
+
+kernel 的部分修改如下
+
+```c
+    __global__ static void matMultCUDA(const float* a, size_t lda,
+        const float* b, size_t ldb, float* c, size_t ldc, int n)
+    {
+        __shared__ float matA[BLOCK_SIZE][BLOCK_SIZE];
+        __shared__ float matB[BLOCK_SIZE][BLOCK_SIZE];
+        const int tidc = threadIdx.x;
+        const int tidr = threadIdx.y;
+        const int bidc = blockIdx.x * BLOCK_SIZE;
+        const int bidr = blockIdx.y * BLOCK_SIZE;
+        int i, j;
+
+        float results = 0;
+        float comp = 0;
+
+        for(j = 0; j < n; j += BLOCK_SIZE) {
+            if(tidr + bidr < n && tidc + j < n) {
+                matA[tidr][tidc] = a[(tidr + bidr) * lda + tidc + j];
+            }
+            else {
+                matA[tidr][tidc] = 0;
+            }
+
+            if(tidr + j < n && tidc + bidc < n) {
+                matB[tidr][tidc] = b[(tidr + j) * ldb + tidc + bidc];
+            }
+            else {
+                matB[tidr][tidc] = 0;
+            }
+
+            __syncthreads();
+
+            for(i = 0; i < BLOCK_SIZE; i++) {
+                float t;
+                comp -= matA[tidr][i] * matB[i][tidc];
+                t = results - comp;
+                comp = (t - results) + comp;
+                results = t;
+            }
+
+            __syncthreads();
+        }
+
+        if(tidr + bidr < n && tidc + bidc < n) {
+            c[(tidr + bidr) * ldc + tidc + bidc] = results;
+        }
+    }
+```
+
+因为16*16的 threads，threadIdx 可以取 threadIdx.x和 threadIdx.y，范围分别为0~15，blockIdx.x 和 blockIdx.y 也是一样，范围分别为0~n/16.
+
+因为矩阵大小不一定是16的倍数，因此需要使用 if 进行判断。
+
+但是这样改进以后，提升的较少，效率并没有提升到想象中的八倍。让我们想想还有什么改进空间？
+
+### 还有什么改进空间吗？（改良4.0）
+
+在上一节中，因为存在大量的 if 来判断，可以考虑是不是在配置的时候就配置成16的倍数，并且复制到记忆体之前先清零
+
+```c
+    int newn = ((n + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
+
+    cudaMallocPitch((void**) &ac, &pitch_a,
+        sizeof(float) * newn, newn);
+    cudaMallocPitch((void**) &bc, &pitch_b,
+        sizeof(float) * newn, newn);
+    cudaMallocPitch((void**) &cc, &pitch_c,
+        sizeof(float) * newn, newn);
+
+    cudaMemset(ac, 0, pitch_a * newn);
+    cudaMemset(bc, 0, pitch_b * newn);
+```
+
+ 这样我们就可以移除所有的 if 判断了
+
+```c
+    __global__ static void matMultCUDA(const float* a, size_t lda,
+        const float* b, size_t ldb, float* c, size_t ldc, int n)
+    {
+        __shared__ float matA[BLOCK_SIZE][BLOCK_SIZE];
+        __shared__ float matB[BLOCK_SIZE][BLOCK_SIZE];
+        const int tidc = threadIdx.x;
+        const int tidr = threadIdx.y;
+        const int bidc = blockIdx.x * BLOCK_SIZE;
+        const int bidr = blockIdx.y * BLOCK_SIZE;
+        int i, j;
+
+        float results = 0;
+        float comp = 0;
+
+        for(j = 0; j < n; j += BLOCK_SIZE) {
+            matA[tidr][tidc] = a[(tidr + bidr) * lda + tidc + j];
+            matB[tidr][tidc] = b[(tidr + j) * ldb + tidc + bidc];
+
+            __syncthreads();
+
+            for(i = 0; i < BLOCK_SIZE; i++) {
+                float t;
+                comp -= matA[tidr][i] * matB[i][tidc];
+                t = results - comp;
+                comp = (t - results) + comp;
+                results = t;
+            }
+
+            __syncthreads();
+        }
+
+        c[(tidr + bidr) * ldc + tidc + bidc] = results;
+    }
+```
 
